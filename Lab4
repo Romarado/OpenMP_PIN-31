@@ -135,10 +135,7 @@ void sequence_func()
 
 
 int main() {
-	int i;
-
 	
 	sequence_func();
-
 	return 0;
 }
