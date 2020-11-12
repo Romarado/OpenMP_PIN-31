@@ -1,0 +1,419 @@
+#include <omp.h>
+#include <iostream>
+#include <time.h>
+using namespace std;
+
+
+const int N = 10000000;
+
+#define PRINT_MATRIX false
+#define PRINT_RESULT false
+#define SHOW_ITERATIONS false
+
+void sequence_func()
+{
+	int i;
+	int* A;
+	int* B;
+	int* C;
+	double result = 0.1;
+
+	A = new int[N];
+	B = new int[N];
+	C = new int[N];
+
+
+	for (i = 0; i < N; i++) {
+		A[i] = rand() % 10 + 1;
+		B[i] = rand() % 10 + 1;
+		C[i] = rand() % 10 + 1;
+	}
+#pragma region prints
+	for (i = 0; i < N; i++) {
+		if (PRINT_MATRIX)
+			cout << A[i] << " ";
+	}
+	if (PRINT_MATRIX) {
+		cout << " \n";
+	}
+	for (i = 0; i < N; i++) {
+		if (PRINT_MATRIX)
+			cout << B[i] << " ";
+	}
+	if (PRINT_MATRIX)
+		cout << " \n";
+	for (i = 0; i < N; i++) {
+		if (PRINT_MATRIX)
+			cout << C[i] << " ";
+	}
+	if (PRINT_MATRIX)
+		cout << " \n";
+#pragma endregion
+
+#pragma region code
+	clock_t start1 = clock();
+	for (i = 0; i < N; i++) {
+		if (A[i] % 2 == 0) {
+			result += (double)B[i] / (double)C[i];
+			if (SHOW_ITERATIONS)
+				cout << result << endl;
+		}
+		else
+		{
+			result += (double)A[i] + B[i];
+			if (SHOW_ITERATIONS)
+				cout << result << endl;
+		}
+	}
+
+#pragma endregion
+	clock_t end1 = clock();
+	printf("\nTime of operating without MP:  %f", difftime(end1, start1));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+
+	clock_t start = clock();
+
+#pragma omp parallel shared(A,B,C)
+	{
+#pragma omp for private(i) reduction(+:result)
+		for (i = 0; i < N; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+	}
+
+
+	clock_t end = clock();
+	printf("\nTime of operating with MP:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+	start = clock();
+#pragma omp parallel shared(A,B,C)
+	{
+#pragma omp for private(i) 
+		for (i = 0; i < N; i++)
+		{
+#pragma omp critical
+			{
+				if (A[i] % 2 == 0)
+				{
+					result += (double)B[i] / (double)C[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+				else
+				{
+					result += (double)A[i] + B[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+			}
+		}
+	}
+
+
+	end = clock();
+	printf("\nTime of operating with critical MP:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+	start = clock();
+#pragma omp parallel sections shared(A,B,C) reduction(+: result)
+	{
+	#pragma omp section
+		
+			for (i = 0; i < N / 2; i++)
+			{
+				if (A[i] % 2 == 0){
+					result += (double)B[i] / (double)C[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+				else{
+					result += (double)A[i] + B[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+			}
+		
+
+		#pragma omp section
+		
+			for (i = N / 2; i < N; i++)
+			{
+				if (A[i] % 2 == 0)
+				{
+					result += (double)B[i] / (double)C[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+				else
+				{
+					result += (double)A[i] + B[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+
+			}
+		
+	}
+
+
+	end = clock();
+	printf("\nTime of operating with 2 sections MP:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+	start = clock();
+#pragma omp parallel sections shared(A,B,C) reduction(+: result)
+	{
+#pragma omp section
+		for (i = 0; i < N / 4; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+
+#pragma omp section
+		for (i = N / 4; i < 2*N / 4; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+
+		
+#pragma omp section
+		for (i = 2*N / 4; i < 3 * N / 4; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = 3 * N / 4; i < N; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+	}
+
+
+	end = clock();
+	printf("\nTime of operating with 4 sections MP:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+	start = clock();
+#pragma omp parallel sections shared(A,B,C) reduction(+: result)
+	{
+#pragma omp section
+		for (i = 0; i < N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = N / 8; i < 2 * N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+
+#pragma omp section
+		for (i = 2* N / 8; i < 3 * N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+
+#pragma omp section
+		for (i = 3 * N / 8; i < 4 * N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = 4 * N / 8; i < 5*N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = 5 * N / 8; i < 6 * N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = 6 * N / 8; i < 7 * N / 8; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+#pragma omp section
+		for (i = 7 * N / 8; i < N; i++)
+		{
+			if (A[i] % 2 == 0)
+			{
+				result += (double)B[i] / (double)C[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+			else
+			{
+				result += (double)A[i] + B[i];
+				if (SHOW_ITERATIONS)
+					cout << result << endl;
+			}
+
+		}
+	}
+
+
+	end = clock();
+	printf("\nTime of operating with 8 sections MP:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+}
+
+
+int main() {
+	sequence_func();
+
+	return 0;
+}
