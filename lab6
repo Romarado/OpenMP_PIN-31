@@ -1,0 +1,119 @@
+#include <omp.h> 
+#include <iostream>
+#include <time.h>
+
+using namespace std;
+const int NMAX = 30000000;
+omp_lock_t mylck;
+void main()
+{
+	int i, j;
+	int* A, * B, * C;
+	srand(time(0));
+	A = (int*)malloc(sizeof(int) * NMAX);
+	B = (int*)malloc(sizeof(int) * NMAX);
+	C = (int*)malloc(sizeof(int) * NMAX);
+	for (int i = 0; i < NMAX; i++) {
+		A[i] = rand() % 10 + 1;
+		B[i] = rand() % 10 + 1;
+		C[i] = rand() % 10 + 1;
+	}
+#pragma region OpenMP
+	cout << "Calculating with openmp:" << endl;
+	clock_t start = clock();
+	double counter = 1;
+#pragma omp parallel shared(A,B,C)
+	{
+#pragma omp for private(i,j) reduction(*:counter)
+		for (i = 0; i < NMAX; i++)
+		{
+			if (A[i] % 2 == 0) {
+				counter *= (double)B[i] / C[i];
+			}
+			else {
+				counter *= A[i] + B[i];
+			}
+		}
+	} 
+	cout << "Result:  " << counter << endl;
+	clock_t end = clock();
+	printf("Time of operation %f \n", difftime(end, start));
+#pragma endregion
+
+#pragma region WithOutOpenMP
+	cout << "Calculating without openmp" << endl;
+	counter = 1;
+	start = clock();
+	for (i = 0; i < NMAX; i++)
+	{
+		if (A[i] % 2 == 0) {
+			counter *= (double)B[i] / C[i];
+		}
+		else {
+			counter *= A[i] + B[i];
+		}
+	}
+	cout << "Result:  " << counter << endl;
+	end = clock();
+	printf("Time of operation %f \n", difftime(end, start));
+#pragma endregion
+	double result;
+	omp_init_lock(&mylck);
+	cout << "Calculating with locks" << endl;
+	counter = 1;
+
+
+	omp_set_num_threads(4);
+	counter = 1;
+	start = clock();
+#pragma omp parallel shared(A,B,C,counter) private(i,result)
+	{
+
+		result = 1;
+		int num = omp_get_thread_num();
+		for (i = (num)* NMAX / 4; i < (num + 1) * NMAX / 4; i++)
+		{
+			if (A[i] % 2 == 0) {
+				result *= (double)B[i] / C[i];
+			}
+			else {
+				result *= A[i] + B[i];
+			}
+		}
+		omp_set_lock(&mylck);
+		counter *= result;
+		omp_unset_lock(&mylck);
+	}
+	cout << "Result:  " << counter << endl;
+	end = clock();
+	printf("Time of operation %f \n", difftime(end, start));
+	cout << "Calculating with barrier" << endl;
+
+	omp_set_num_threads(4);
+	counter = 1;
+	start = clock();
+#pragma omp parallel shared(A,B,C,counter) private(i,result)
+	{
+		result = 1;
+		int num = omp_get_thread_num();
+		for (i = (num)* NMAX / 4; i < (num + 1) * NMAX / 4; i++)
+		{
+			if (A[i] % 2 == 0) {
+				result *= (double)B[i] / C[i];
+			}
+			else {
+				result *= A[i] + B[i];
+			}
+		}
+
+#pragma omp barrier
+		omp_set_lock(&mylck);
+		counter *= result;
+		omp_unset_lock(&mylck);
+	}
+	omp_destroy_lock(&mylck);
+	cout << "Result:  " << counter << endl;
+	end = clock();
+	printf("Time of operation %f \n", difftime(end, start));
+}
+
