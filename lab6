@@ -133,6 +133,35 @@ void sequence_func()
 
 	result = 0.1;
 	start = clock();
+#pragma omp parallel shared(A,B,C, result)
+	{
+#pragma omp for private(i) 
+		for (i = 0; i < N; i++)
+		{
+				if (A[i] % 2 == 0)
+				{
+#pragma omp atomic
+					result += (double)B[i] / (double)C[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+				else
+				{
+#pragma omp atomic
+					result += (double)A[i] + B[i];
+					if (SHOW_ITERATIONS)
+						cout << result << endl;
+				}
+		}
+	}
+
+
+	end = clock();
+	printf("\nTime of operating with atomic:  %f", difftime(end, start));
+	cout << "\nResult: " << result << endl;
+
+	result = 0.1;
+	start = clock();
 #pragma omp parallel sections shared(A,B,C) private(i) reduction(+: result)
 	{
 		#pragma omp section
@@ -478,11 +507,11 @@ void sequence_func()
 	end = clock();
 	printf("\nTime of operating with barrier:  %f", difftime(end, start));
 	cout << "\nResult: " << counter << endl;
-
 }
 
 
 int main() {
 	sequence_func();
+
 	return 0;
 }
